@@ -49,8 +49,8 @@ class ChatMessageSingleItem extends StatelessWidget {
                 Expanded(
                   child: Container(
                       margin: EdgeInsets.only(bottom: 10, top: 10),
-                      child: MathBlockExtractor(
-                          latexString: chatMessage.promptResponse!.trim())
+                      child:
+                          MarkdownBody(data: chatMessage.promptResponse!.trim())
 
                       // AnimatedTextKit(
                       //   totalRepeatCount: 1,

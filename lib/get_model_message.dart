@@ -1,26 +1,19 @@
 import 'dart:convert';
-import 'package:http/http.dart';
-import 'package:math_llm_ui/models/chat_converstaion_model.dart';
+import 'package:http/http.dart' as http;
+import 'package:math_llm_ui/models/chat_conversation_model.dart';
 
 class GetModelMessage {
+  static const String apiUrl = 'http://127.0.0.1:8000/generate';
   static Future<Map<String, dynamic>> sendPrompt(String prompt) async {
-    var client = Client();
     print('Sending prompt: $prompt'); // Log the prompt being sent
     try {
-      Response response = await client.post(
-        Uri.https(
-            "admin-tpl--basic-inference-fastapi-app-dev.modal.run", "generate"),
-        headers: {"Content-Type": "application/json"},
-        body: jsonEncode({"prompt": prompt}),
+      final response = await http.post(
+        Uri.parse(apiUrl),
+        headers: {'Content-Type': 'application/json'},
+        body: jsonEncode({'prompt': prompt}),
       );
-
-      // Log the response status code
-      print('Response status code: ${response.statusCode}');
-
-      // Check for a successful response
       if (response.statusCode == 200) {
-        var decodedResponse =
-            jsonDecode(utf8.decode(response.bodyBytes)) as Map<String, dynamic>;
+        var decodedResponse = jsonDecode(response.body);
         print(
             'Response body: $decodedResponse'); // Log the successful response body
         return decodedResponse;
@@ -32,9 +25,6 @@ class GetModelMessage {
     } catch (e) {
       print('Exception occurred: ${e.toString()}'); // Log any exceptions
       return {};
-    } finally {
-      client.close();
-      print('HTTP client closed.'); // Log the closure of the client
     }
   }
 
@@ -43,12 +33,20 @@ class GetModelMessage {
         'Formatting prompt response for: $prompt'); // Log the prompt being formatted
     Map<String, dynamic> response = await sendPrompt(prompt);
 
-    if (response.isNotEmpty) {
-      String content = (response["choices"][0]["message"]["content"] as String)
-          .replaceAll("<|question_end|>Answer:", "");
-      print(
-          'Formatted response content: $content'); // Log the formatted response
-      return content;
+    if (response.isNotEmpty && response.containsKey("choices")) {
+      try {
+        String content =
+            (response["choices"][0]["message"]["content"] as String)
+                .replaceAll("<|question_end|>Answer:", "")
+                .trim();
+        print(
+            'Formatted response content: $content'); // Log the formatted response
+        return content;
+      } catch (e) {
+        print(
+            'Error extracting content: ${e.toString()}'); // Log extraction errors
+        return '';
+      }
     } else {
       print(
           'No response received to format.'); // Log if no response was received
@@ -56,15 +54,15 @@ class GetModelMessage {
     }
   }
 
-  static Future<ChatConversationModel> generateResponse(String requests) async {
+  static Future<ChatConversationModel> generateResponse(String request) async {
     print(
-        'Generating response for request: $requests'); // Log the request being processed
-    String resp = await sendPromptFormat(requests);
+        'Generating response for request: $request'); // Log the request being processed
+    String resp = await sendPromptFormat(request);
 
     if (resp.isNotEmpty) {
       var chatModelData = {
         "choices": [
-          {"text": resp, 'index': 1, 'finish_reason': 'completed'}
+          {"text": resp, "index": 1, "finish_reason": "completed"}
         ]
       };
       print(
